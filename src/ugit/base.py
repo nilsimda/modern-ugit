@@ -58,16 +58,17 @@ def get_tree(
 
 def _empty_current_directory() -> None:
     for root, dirs, files in pathlib.Path.cwd().walk(top_down=False):
+        # prune ignored dirs from search
+        dirs[:] = [d for d in dirs if d not in IGNORED]
         for name in files:
-            if name not in IGNORED:
-                (root / name).unlink()
+            path = root / name
+            if not is_ignored(path):
+                path.unlink()
         for name in dirs:
             path = root / name
-            if name not in IGNORED:
-                # remove dir only if empty
-                # dir might not be empty due to ignored files
-                if not any(path.iterdir()):
-                    path.rmdir()
+            # remove only if empty
+            if not any(path.iterdir()) and not is_ignored(path):
+                path.rmdir()
 
 
 def read_tree(tree_oid: str) -> None:
@@ -90,3 +91,7 @@ def commit(message: str) -> str:
     oid = data.hash_object(commit_content.encode(), "commit")
     data.set_HEAD(oid)
     return oid
+
+
+def is_ignored(path: pathlib.Path) -> bool:
+    return any(ignored_p in path.parts for ignored_p in IGNORED)
