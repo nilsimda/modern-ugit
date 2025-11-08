@@ -1,4 +1,5 @@
 import pathlib
+import string
 from typing import Generator, NamedTuple
 
 from ugit import data
@@ -118,6 +119,25 @@ def get_commit(oid):
 
 def create_tag(name: str, oid: str) -> None:
     data.update_ref(f"refs/tags/{name}", oid)
+
+
+def get_oid(name: str) -> str:
+    refs_to_try = [
+        f"{name}",
+        f"refs/{name}",
+        f"refs/tags/{name}",
+        f"refs/heads/{name}",
+    ]
+
+    for trial_ref in refs_to_try:
+        if ref := data.get_ref(trial_ref):
+            return ref
+
+    is_hex = all(c in string.hexdigits for c in name)
+    if len(name) == 40 and is_hex:
+        return name
+
+    assert False, f"Unkown Name {name}"
 
 
 def is_ignored(path: pathlib.Path) -> bool:
