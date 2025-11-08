@@ -45,6 +45,10 @@ def parse_args() -> argparse.Namespace:
     log_parser.set_defaults(func=log)
     log_parser.add_argument("oid", nargs="?")
 
+    checkout_parser = commands.add_parser("checkout")
+    checkout_parser.set_defaults(func=checkout)
+    checkout_parser.add_argument("oid")
+
     return parser.parse_args()
 
 
@@ -86,6 +90,10 @@ def log(args: argparse.Namespace) -> None:
         print("")
 
         oid = commit.parent
+
+
+def checkout(args: argparse.Namespace) -> None:
+    base.checkout(args.oid)
 
 
 if __name__ == "__main__":
