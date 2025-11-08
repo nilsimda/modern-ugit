@@ -17,7 +17,7 @@ def hash_object(data: bytes, type_dec: str = "blob") -> str:
     return oid
 
 
-def get_object(oid: str, expected: str = "blob") -> bytes:
+def get_object(oid: str, expected: str | None = "blob") -> bytes:
     obj = pathlib.Path(f"{GIT_DIR}/objects/{oid}").read_bytes()
     type_enc, _, content = obj.partition(b"\x00")
     type_dec = type_enc.decode()

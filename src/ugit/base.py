@@ -1,5 +1,5 @@
 import pathlib
-from typing import Generator
+from typing import Generator, NamedTuple
 
 from ugit import data
 
@@ -58,8 +58,6 @@ def get_tree(
 
 def _empty_current_directory() -> None:
     for root, dirs, files in pathlib.Path.cwd().walk(top_down=False):
-        # prune ignored dirs from search
-        dirs[:] = [d for d in dirs if d not in IGNORED]
         for name in files:
             path = root / name
             if not is_ignored(path):
@@ -91,6 +89,24 @@ def commit(message: str) -> str:
     oid = data.hash_object(commit_content.encode(), "commit")
     data.set_HEAD(oid)
     return oid
+
+
+Commit = NamedTuple("Commit", [("tree", str), ("parent", str), ("message", str)])
+
+
+def get_commit(oid):
+    commit = data.get_object(oid, "commit").decode()
+    lines = commit.splitlines()
+
+    blank_line_idx = lines.index("")
+    headers = lines[:blank_line_idx]
+    message = "\n".join(lines[blank_line_idx + 1 :])
+
+    header_dict = dict(line.split(" ", 1) for line in headers)
+
+    return Commit(
+        tree=header_dict.get("tree"), parent=header_dict.get("parent"), message=message
+    )
 
 
 def is_ignored(path: pathlib.Path) -> bool:
