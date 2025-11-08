@@ -69,6 +69,7 @@ def _empty_current_directory() -> None:
                 path.rmdir()
 
 
+# TODO: fix empty subdirs
 def read_tree(tree_oid: str) -> None:
     _empty_current_directory()
     for path, oid in get_tree(tree_oid, pathlib.Path.cwd()).items():
@@ -79,7 +80,7 @@ def read_tree(tree_oid: str) -> None:
 def commit(message: str) -> str:
     commit_content = f"tree {write_tree()}\n"
 
-    HEAD = data.get_HEAD()
+    HEAD = data.get_ref("HEAD")
     if HEAD:
         commit_content += f"parent {HEAD}\n"
 
@@ -87,14 +88,14 @@ def commit(message: str) -> str:
     commit_content += f"{message}\n"
 
     oid = data.hash_object(commit_content.encode(), "commit")
-    data.set_HEAD(oid)
+    data.update_ref("HEAD", oid)
     return oid
 
 
 def checkout(oid):
     commit = get_commit(oid)
     read_tree(commit.tree)
-    data.set_HEAD(oid)
+    data.update_ref("HEAD", oid)
 
 
 Commit = NamedTuple("Commit", [("tree", str), ("parent", str), ("message", str)])
@@ -113,6 +114,10 @@ def get_commit(oid):
     return Commit(
         tree=header_dict.get("tree"), parent=header_dict.get("parent"), message=message
     )
+
+
+def create_tag(name: str, oid: str) -> None:
+    data.update_ref(f"refs/tags/{name}", oid)
 
 
 def is_ignored(path: pathlib.Path) -> bool:
