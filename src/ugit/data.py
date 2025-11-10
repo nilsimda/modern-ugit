@@ -35,9 +35,12 @@ def update_ref(ref: str, oid: str) -> None:
 
 def get_ref(ref: str) -> str | None:
     path = pathlib.Path(GIT_DIR, ref)
+    value = None
     if path.is_file():
-        return path.read_text()
-    return None
+        value = path.read_text()
+        if value.startswith("ref:"):
+            return get_ref(value.split(":", 1)[1].strip())
+    return value
 
 
 def iter_refs() -> Generator[tuple[str, str | None]]:

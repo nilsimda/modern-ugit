@@ -1,6 +1,6 @@
 import pathlib
 import string
-from typing import Generator, NamedTuple
+from typing import Deque, Generator, NamedTuple
 
 from ugit import data
 
@@ -121,16 +121,21 @@ def create_tag(name: str, oid: str) -> None:
     data.update_ref(f"refs/tags/{name}", oid)
 
 
+def create_branch(name: str, oid: str) -> None:
+    data.update_ref(f"refs/heads/{name}", oid)
+
+
 def iter_commits_and_parents(oids: set[str]) -> Generator[str]:
+    oids_q = Deque(oids)
     visited = set()
-    while oids:
-        oid = oids.pop()
+    while oids_q:
+        oid = oids_q.popleft()
         if oid not in visited:
             visited.add(oid)
             yield oid
             commit = get_commit(oid)
             if commit.parent:
-                oids.add(commit.parent)
+                oids_q.appendleft(commit.parent)
 
 
 def get_oid(name: str) -> str:
