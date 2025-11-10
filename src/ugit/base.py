@@ -81,7 +81,7 @@ def read_tree(tree_oid: str) -> None:
 def commit(message: str) -> str:
     commit_content = f"tree {write_tree()}\n"
 
-    HEAD = data.get_ref("HEAD")
+    HEAD = data.get_ref("HEAD").value
     if HEAD:
         commit_content += f"parent {HEAD}\n"
 
@@ -89,14 +89,14 @@ def commit(message: str) -> str:
     commit_content += f"{message}\n"
 
     oid = data.hash_object(commit_content.encode(), "commit")
-    data.update_ref("HEAD", oid)
+    data.update_ref("HEAD", data.RefValue(symbolic=False, value=oid))
     return oid
 
 
 def checkout(oid):
     commit = get_commit(oid)
     read_tree(commit.tree)
-    data.update_ref("HEAD", oid)
+    data.update_ref("HEAD", data.RefValue(symbolic=False, value=oid))
 
 
 Commit = NamedTuple("Commit", [("tree", str), ("parent", str | None), ("message", str)])
@@ -118,11 +118,11 @@ def get_commit(oid: str) -> Commit:
 
 
 def create_tag(name: str, oid: str) -> None:
-    data.update_ref(f"refs/tags/{name}", oid)
+    data.update_ref(f"refs/tags/{name}", data.RefValue(symbolic=False, value=oid))
 
 
 def create_branch(name: str, oid: str) -> None:
-    data.update_ref(f"refs/heads/{name}", oid)
+    data.update_ref(f"refs/heads/{name}", data.RefValue(symbolic=False, value=oid))
 
 
 def iter_commits_and_parents(oids: set[str]) -> Generator[str]:
@@ -138,7 +138,7 @@ def iter_commits_and_parents(oids: set[str]) -> Generator[str]:
                 oids_q.appendleft(commit.parent)
 
 
-def get_oid(name: str) -> str:
+def get_oid(name: str) -> str | None:
     # alias @ to HEAD
     if name == "@":
         name = "HEAD"
@@ -152,7 +152,7 @@ def get_oid(name: str) -> str:
 
     for trial_ref in refs_to_try:
         if ref := data.get_ref(trial_ref):
-            return ref
+            return ref.value
 
     is_hex = all(c in string.hexdigits for c in name)
     if len(name) == 40 and is_hex:

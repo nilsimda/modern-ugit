@@ -124,9 +124,9 @@ def k(args: argparse.Namespace) -> None:
     oids = set()
     for refname, ref in data.iter_refs():
         dot += f'"{refname}" [shape=note]\n'
-        dot += f'"{refname}" -> "{ref}"\n'
-        if ref:
-            oids.add(ref)
+        dot += f'"{refname}" -> "{ref.value}"\n'
+        if ref.value:
+            oids.add(ref.value)
 
     for oid in base.iter_commits_and_parents(oids):
         commit = base.get_commit(oid)

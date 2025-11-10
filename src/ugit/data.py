@@ -1,6 +1,6 @@
 import hashlib
 import pathlib
-from typing import Generator
+from typing import Generator, NamedTuple
 
 GIT_DIR = ".ugit"
 
@@ -27,23 +27,28 @@ def get_object(oid: str, expected: str | None = "blob") -> bytes:
     return content
 
 
-def update_ref(ref: str, oid: str) -> None:
+RefValue = NamedTuple("RefValue", [("symbolic", bool), ("value", str | None)])
+
+
+def update_ref(ref: str, value: RefValue) -> None:
+    assert not value.symbolic
     path = pathlib.Path(GIT_DIR, ref)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(oid)
+    if value.value:
+        path.write_text(value.value)
 
 
-def get_ref(ref: str) -> str | None:
+def get_ref(ref: str) -> RefValue:
     path = pathlib.Path(GIT_DIR, ref)
     value = None
     if path.is_file():
         value = path.read_text()
         if value.startswith("ref:"):
             return get_ref(value.split(":", 1)[1].strip())
-    return value
+    return RefValue(symbolic=False, value=value)
 
 
-def iter_refs() -> Generator[tuple[str, str | None]]:
+def iter_refs() -> Generator[tuple[str, RefValue]]:
     refs = ["HEAD"]
     for root, _, filenames in pathlib.Path(GIT_DIR, "refs").walk():
         refs.extend(f"{root.relative_to(GIT_DIR)}/{name}" for name in filenames)
