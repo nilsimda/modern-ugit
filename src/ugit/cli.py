@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+import subprocess
 import sys
 import textwrap
 
@@ -45,7 +46,7 @@ def parse_args() -> argparse.Namespace:
 
     log_parser = commands.add_parser("log")
     log_parser.set_defaults(func=log)
-    log_parser.add_argument("oid", type=oid, nargs="?")
+    log_parser.add_argument("oid", default="@", type=oid, nargs="?")
 
     checkout_parser = commands.add_parser("checkout")
     checkout_parser.set_defaults(func=checkout)
@@ -54,7 +55,10 @@ def parse_args() -> argparse.Namespace:
     tag_parser = commands.add_parser("tag")
     tag_parser.set_defaults(func=tag)
     tag_parser.add_argument("name")
-    tag_parser.add_argument("oid", type=oid, nargs="?")
+    tag_parser.add_argument("oid", default="@", type=oid, nargs="?")
+
+    k_parser = commands.add_parser("k")
+    k_parser.set_defaults(func=k)
 
     return parser.parse_args()
 
@@ -87,7 +91,7 @@ def commit(args: argparse.Namespace) -> None:
 
 
 def log(args: argparse.Namespace) -> None:
-    oid = args.oid or data.get_ref("HEAD")
+    oid = args.oid
 
     while oid:
         commit = base.get_commit(oid)
@@ -104,9 +108,31 @@ def checkout(args: argparse.Namespace) -> None:
 
 
 def tag(args: argparse.Namespace) -> None:
-    oid = args.oid or data.get_ref("HEAD")
-    if oid:
-        base.create_tag(args.name, oid)
+    base.create_tag(args.name, args.oid)
+
+
+def k(args: argparse.Namespace) -> None:
+    dot = "digraph commits {\n"
+    oids = set()
+    for refname, ref in data.iter_refs():
+        dot += f'"{refname}" [shape=note]\n'
+        dot += f'"{refname}" -> "{ref}"\n'
+        if ref:
+            oids.add(ref)
+
+    for oid in base.iter_commits_and_parents(oids):
+        commit = base.get_commit(oid)
+        dot += f'"{oid}" [shape=box style=filled label="{oid[:10]}"]\n'
+        if commit.parent:
+            dot += f'"{oid}" -> "{commit.parent}"\n'
+
+    dot += "}"
+    print(dot)
+    with subprocess.Popen(
+        ["dot", "-Tpdf", "-o", "/tmp/commits.pdf"], stdin=subprocess.PIPE
+    ) as proc:
+        proc.communicate(dot.encode())
+    subprocess.run(["open", "/tmp/commits.pdf"])
 
 
 if __name__ == "__main__":

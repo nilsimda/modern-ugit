@@ -99,10 +99,10 @@ def checkout(oid):
     data.update_ref("HEAD", oid)
 
 
-Commit = NamedTuple("Commit", [("tree", str), ("parent", str), ("message", str)])
+Commit = NamedTuple("Commit", [("tree", str), ("parent", str | None), ("message", str)])
 
 
-def get_commit(oid):
+def get_commit(oid: str) -> Commit:
     commit = data.get_object(oid, "commit").decode()
     lines = commit.splitlines()
 
@@ -113,7 +113,7 @@ def get_commit(oid):
     header_dict = dict(line.split(" ", 1) for line in headers)
 
     return Commit(
-        tree=header_dict.get("tree"), parent=header_dict.get("parent"), message=message
+        tree=header_dict["tree"], parent=header_dict.get("parent"), message=message
     )
 
 
@@ -121,7 +121,23 @@ def create_tag(name: str, oid: str) -> None:
     data.update_ref(f"refs/tags/{name}", oid)
 
 
+def iter_commits_and_parents(oids: set[str]) -> Generator[str]:
+    visited = set()
+    while oids:
+        oid = oids.pop()
+        if oid not in visited:
+            visited.add(oid)
+            yield oid
+            commit = get_commit(oid)
+            if commit.parent:
+                oids.add(commit.parent)
+
+
 def get_oid(name: str) -> str:
+    # alias @ to HEAD
+    if name == "@":
+        name = "HEAD"
+
     refs_to_try = [
         f"{name}",
         f"refs/{name}",

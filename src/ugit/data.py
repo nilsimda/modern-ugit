@@ -1,5 +1,6 @@
 import hashlib
 import pathlib
+from typing import Generator
 
 GIT_DIR = ".ugit"
 
@@ -37,3 +38,12 @@ def get_ref(ref: str) -> str | None:
     if path.is_file():
         return path.read_text()
     return None
+
+
+def iter_refs() -> Generator[tuple[str, str | None]]:
+    refs = ["HEAD"]
+    for root, _, filenames in pathlib.Path(GIT_DIR, "refs").walk():
+        refs.extend(f"{root.relative_to(GIT_DIR)}/{name}" for name in filenames)
+
+    for refname in refs:
+        yield refname, get_ref(refname)
